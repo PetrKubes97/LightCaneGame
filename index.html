@@ -15,18 +15,18 @@
     <script>
         // const osc = new Tone.Oscillator(this.value, "sine").toMaster().start();
         const split = new Tone.Merge().toMaster();
-        const leftEar = new Tone.Oscillator(220);
-        const rightEar = new Tone.Oscillator(220);
+        const leftEar = new Tone.Oscillator(120);
+        const rightEar = new Tone.Oscillator(120);
 
         const partials1 = []
         const partials2 = []
-        for (let i = 0; i < 128; i++) {
+        for (let i = 0; i < 256; i++) {
             partials1[i] = 0.0
             partials2[i] = 0.0
         }
 
-        partials1[127] = 1.0
-        partials2[127] = 1.0
+        partials1[255] = 1.0
+        partials2[255] = 1.0
 
         leftEar.partials = partials1
         rightEar.partials =  partials2
@@ -119,7 +119,7 @@
                 ctx.fill();
                 console.log("---------")
 
-                for (let i = -7; i < 9; i += 2) {
+                for (let i = -9; i < 11; i += 2) {
                     let distance = Infinity;
                     let point;
 
@@ -127,7 +127,7 @@
                         const currentPoint = getLineSegmentIntersection(
                             player.x,
                             player.y,
-                            player.rotation + i * 0.05,
+                            player.rotation + i * 0.06,
                             line.fromX,
                             line.fromY,
                             line.toX,
@@ -151,21 +151,24 @@
                     const DIST_CAP = 500;
                     const cappedDist =
                         distance > DIST_CAP ? DIST_CAP : distance;
-
                     const loudness = 1.0 - (cappedDist / DIST_CAP)
+                    const EXP_MULTIPLIER = 0.01
+
                     if (i < 0) {
                         const idx = Math.floor(Math.abs(i) / 2)
-                        partials1[idx] =loudness
+                        partials1[idx] = Math.exp(-distance * EXP_MULTIPLIER)
                         leftEar.partials = partials1.slice()
-                        console.log(idx, loudness)
+                        console.log(idx, partials1[idx])
                     } else {
                         const idx = Math.floor(i / 2) 
-                        partials2[idx] = loudness
+                        partials2[idx] = Math.exp(-distance * EXP_MULTIPLIER)
                         rightEar.partials = partials2.slice()
-                        console.log(idx, loudness)
+                        console.log(idx, partials2[idx])
                     }
-                    
-                    
+
+                    if (distance < 5) {
+                        this.moveBy(-1, 0)
+                    }
 
                     ctx.beginPath();
                     ctx.moveTo(this.x, this.y);
@@ -236,9 +239,9 @@
 
         function update() {
             if (movingForward) {
-                player.moveBy(1.5, 0);
+                player.moveBy(2.5, 0);
             } else if (movingBackward) {
-                player.moveBy(-1.5, 0);
+                player.moveBy(-2.5, 0);
             }
 
             if (movingLeft) {
