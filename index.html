@@ -1,0 +1,382 @@
+<head>
+    <title>Sound see game</title>
+    <script src="Tone.js"></script>
+</head>
+<body style="padding: 0px; margin: 0px; background: black;">
+    <div style="margin: auto;">
+        <canvas
+            id="canvas"
+            height="700"
+            width="1000"
+            style="margin: auto auto; margin-top: 100px; display: block;"
+        ></canvas>
+    </div>
+
+    <script>
+        // const osc = new Tone.Oscillator(this.value, "sine").toMaster().start();
+        const split = new Tone.Merge().toMaster();
+        const leftEar = new Tone.Oscillator(220);
+        const rightEar = new Tone.Oscillator(220);
+
+        const partials1 = []
+        const partials2 = []
+        for (let i = 0; i < 128; i++) {
+            partials1[i] = 0.0
+            partials2[i] = 0.0
+        }
+
+        partials1[127] = 1.0
+        partials2[127] = 1.0
+
+        leftEar.partials = partials1
+        rightEar.partials =  partials2
+
+        leftEar.connect(split.left);
+        rightEar.connect(split.right);
+
+        leftEar.start();
+        rightEar.start();
+
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        let movingForward = false;
+        let movingBackward = false;
+        let movingLeft = false;
+        let movingRigh = false;
+
+        document.addEventListener("keydown", function (event) {
+            switch (event.key) {
+                case "w":
+                    movingForward = true;
+                    movingBackward = false;
+                    break;
+                case "s":
+                    movingBackward = true;
+                    movingForward = false;
+                    break;
+                case "a":
+                    movingLeft = true;
+                    movingRigh = false;
+                    break;
+                case "d":
+                    movingRigh = true;
+                    movingLeft = false;
+                    break;
+            }
+        });
+
+        document.addEventListener("keyup", function (event) {
+            switch (event.key) {
+                case "w":
+                    movingForward = false;
+                    break;
+                case "s":
+                    movingBackward = false;
+                    break;
+                case "a":
+                    movingLeft = false;
+                    break;
+                case "d":
+                    movingRigh = false;
+                    break;
+            }
+        });
+
+        class Player {
+            RADIUS = 10;
+
+            constructor() {
+                this.x = 50;
+                this.y = 50;
+                this.rotation = 0;
+            }
+
+            moveBy(speed, rotationChange) {
+                this.rotation -= rotationChange;
+                if (this.rotation < 0) {
+                    this.rotation += 2 * Math.PI;
+                }
+                if (this.rotation >= 2 * Math.PI) {
+                    this.rotation -= 2 * Math.PI;
+                }
+
+                this.x += Math.sin(this.rotation) * speed;
+                this.y -= Math.cos(this.rotation) * speed;
+            }
+
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(
+                    this.x,
+                    this.y,
+                    10,
+                    this.rotation,
+                    this.rotation + Math.PI,
+                    false
+                );
+                ctx.fillStyle = "black";
+                ctx.fill();
+                console.log("---------")
+
+                for (let i = -7; i < 9; i += 2) {
+                    let distance = Infinity;
+                    let point;
+
+                    map.forEach((line) => {
+                        const currentPoint = getLineSegmentIntersection(
+                            player.x,
+                            player.y,
+                            player.rotation + i * 0.05,
+                            line.fromX,
+                            line.fromY,
+                            line.toX,
+                            line.toY
+                        );
+
+                        if (currentPoint !== undefined) {
+                            const dist = getDistance(
+                                player.x,
+                                player.y,
+                                currentPoint.x,
+                                currentPoint.y
+                            );
+                            if (dist < distance) {
+                                distance = dist;
+                                point = currentPoint;
+                            }
+                        }
+                    });
+
+                    const DIST_CAP = 500;
+                    const cappedDist =
+                        distance > DIST_CAP ? DIST_CAP : distance;
+
+                    const loudness = 1.0 - (cappedDist / DIST_CAP)
+                    if (i < 0) {
+                        const idx = Math.floor(Math.abs(i) / 2)
+                        partials1[idx] =loudness
+                        leftEar.partials = partials1.slice()
+                        console.log(idx, loudness)
+                    } else {
+                        const idx = Math.floor(i / 2) 
+                        partials2[idx] = loudness
+                        rightEar.partials = partials2.slice()
+                        console.log(idx, loudness)
+                    }
+                    
+                    
+
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y);
+                    ctx.lineTo(point.x, point.y);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        const map = [
+            {
+                fromX: 5,
+                fromY: 5,
+                toX: canvas.width - 5,
+                toY: 5,
+            },
+            {
+                fromX: canvas.width - 5,
+                fromY: 5,
+                toX: canvas.width - 5,
+                toY: canvas.height - 5,
+            },
+            {
+                fromX: canvas.width - 5,
+                fromY: canvas.height - 5,
+                toX: 5,
+                toY: canvas.height - 5,
+            },
+            {
+                fromX: 5,
+                fromY: canvas.height - 5,
+                toX: 5,
+                toY: 5,
+            },
+            {
+                fromX: 200,
+                fromY: 200,
+                toX: 200,
+                toY: 500,
+            },
+            {
+                fromX: 200,
+                fromY: 200,
+                toX: 400,
+                toY: 200,
+            },
+            {
+                fromX: 600,
+                fromY: 200,
+                toX: 800,
+                toY: 200,
+            },
+            {
+                fromX: 800,
+                fromY: 200,
+                toX: 800,
+                toY: 500,
+            },
+            {
+                fromX: 800,
+                fromY: 500,
+                toX: 200,
+                toY: 500,
+            },
+        ];
+
+        const player = new Player();
+
+        function update() {
+            if (movingForward) {
+                player.moveBy(1.5, 0);
+            } else if (movingBackward) {
+                player.moveBy(-1.5, 0);
+            }
+
+            if (movingLeft) {
+                player.moveBy(0, 0.02);
+            } else if (movingRigh) {
+                player.moveBy(0, -0.02);
+            }
+        }
+
+        function draw() {
+            // Background
+            ctx.beginPath();
+            ctx.rect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "white";
+            ctx.fill();
+
+            player.draw(ctx);
+
+            map.forEach((line) => {
+                ctx.beginPath();
+                ctx.moveTo(line.fromX, line.fromY);
+                ctx.lineTo(line.toX, line.toY);
+                ctx.stroke();
+            });
+        }
+
+        setInterval(() => {
+            update();
+            draw();
+        }, 16);
+
+        function getLineSegmentIntersection(x, y, rotation, x1, y1, x2, y2) {
+            if (rotation < 0) {
+                rotation += 2 * Math.PI;
+            }
+            if (rotation >= 2 * Math.PI) {
+                rotation -= 2 * Math.PI;
+            }
+
+            const firstLine = getLineFunction(x, y, rotation);
+            const segmentLine = getLineFunctionFromPoints(x1, y1, x2, y2);
+
+            let lineIntersecstion;
+            if (firstLine === undefined && segmentLine !== undefined) {
+                lineIntersection = {
+                    x: x,
+                    y: segmentLine.a * x + segmentLine.b,
+                };
+            } else if (firstLine !== undefined && segmentLine === undefined) {
+                lineIntersection = {
+                    x: x1,
+                    y: firstLine.a * x1 + firstLine.b,
+                };
+            } else if (firstLine === undefined && segmentLine === undefined) {
+                return undefined;
+            } else {
+                lineIntersection = getLineIntesection(
+                    firstLine.a,
+                    firstLine.b,
+                    segmentLine.a,
+                    segmentLine.b
+                );
+            }
+
+            let leftX;
+            let rightX;
+            let upperY;
+            let bottomY;
+
+            if (x1 > x2) {
+                rightX = x1;
+                leftX = x2;
+            } else {
+                rightX = x2;
+                leftX = x1;
+            }
+
+            if (y1 > y2) {
+                bottomY = y1;
+                upperY = y2;
+            } else {
+                bottomY = y2;
+                upperY = y1;
+            }
+
+            if (
+                (lineIntersection.x >= leftX &&
+                    lineIntersection.x <= rightX &&
+                    lineIntersection.y >= upperY &&
+                    lineIntersection.y <= bottomY &&
+                    ((rotation < Math.PI && lineIntersection.x > x) ||
+                        (rotation > Math.PI && lineIntersection.x < x))) ||
+                (rotation == 0 && lineIntersection.y < y) ||
+                (rotation == Math.PI && lineIntersection.y > y)
+            ) {
+                return lineIntersection;
+            } else {
+                return undefined;
+            }
+        }
+
+        function getLineFunctionFromPoints(x1, y1, x2, y2) {
+            if (x1 == x2) return undefined;
+
+            const b = (x2 * y1 - y2 * x1) / (x2 - x1);
+            const a = (y2 - b) / x2;
+
+            return {
+                a,
+                b,
+            };
+        }
+
+        function getLineFunction(x, y, rotation) {
+            if (rotation == 0 || rotation == 2 * Math.PI) {
+                return undefined;
+            }
+
+            const a = -1 / Math.tan(rotation);
+            const b = y - a * x;
+
+            return {
+                a,
+                b,
+            };
+        }
+
+        function getLineIntesection(a1, b1, a2, b2) {
+            const x = (b2 - b1) / (a1 - a2);
+            const y = a2 * x + b2;
+            return {
+                x,
+                y,
+            };
+        }
+
+        function getDistance(x1, y1, x2, y2) {
+            return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+        }
+    </script>
+</body>
